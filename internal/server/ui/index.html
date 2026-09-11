@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>hsdebug</title>
+  <link rel="stylesheet" href="/css/app.css" />
+</head>
+<body>
+  <header>hsdebug &mdash; home server debugger</header>
+  <main>
+    <div id="first-run" class="first-run" style="display:none">
+      <button class="btn" id="btn-register">Register a service</button>
+      <button class="btn secondary" id="btn-scan">Scan &amp; auto-detect</button>
+    </div>
+
+    <div id="register-form" class="card" style="display:none; flex-direction:column; align-items:stretch; gap:8px">
+      <strong>Register a service</strong>
+      <input id="reg-name" placeholder="Name (e.g. sonarr)" />
+      <input id="reg-port" type="number" placeholder="Port (e.g. 8989)" />
+      <input id="reg-catalog" placeholder="Catalog id (optional, e.g. sonarr)" />
+      <input id="reg-health" placeholder="Health path (optional, e.g. /ping)" />
+      <div class="btn-row">
+        <button class="btn" id="reg-submit">Save</button>
+        <button class="btn secondary" id="reg-cancel">Cancel</button>
+      </div>
+    </div>
+
+    <div class="toolbar" id="toolbar" style="display:none">
+      <button class="btn secondary" id="btn-scan-2">Scan &amp; auto-detect</button>
+      <button class="btn secondary" id="btn-register-2">Register a service</button>
+    </div>
+
+    <div id="status" class="muted"></div>
+    <div id="services"></div>
+    <div id="agent" class="muted"></div>
+  </main>
+  <script src="/js/app.js"></script>
+</body>
+</html>
