@@ -78,6 +78,23 @@ docker build -t hsdebug .
 docker run -p 7654:7654 -v hsdebug-data:/data hsdebug
 ```
 
+### Probe host (containerized deployments)
+
+By default hsdebug probes and registers services on `127.0.0.1`. When it runs in
+a **bridged** container, `127.0.0.1` is the container itself, so point it at the
+Docker host gateway instead:
+
+```sh
+docker run -p 7654:7654 \
+  --add-host host.docker.internal:host-gateway \
+  -e HSDEBUG_PROBE_HOST=host.docker.internal \
+  -v hsdebug-data:/data hsdebug
+```
+
+The probe host resolves in priority order: `HSDEBUG_PROBE_HOST` env var →
+config `probeHost` → `127.0.0.1`. `host.docker.internal` is accepted by the
+loopback-only guard for this reason.
+
 ## Development
 
 ```sh

@@ -113,6 +113,43 @@ func TestLoadInvalidJSONReturnsError(t *testing.T) {
 	}
 }
 
+func TestResolveProbeHostDefault(t *testing.T) {
+	c := Default()
+	if got := c.ResolveProbeHost(); got != "127.0.0.1" {
+		t.Errorf("default probe host = %q, want 127.0.0.1", got)
+	}
+}
+
+func TestResolveProbeHostConfig(t *testing.T) {
+	c := Default()
+	c.ProbeHost = "host.docker.internal"
+	if got := c.ResolveProbeHost(); got != "host.docker.internal" {
+		t.Errorf("config probe host = %q", got)
+	}
+}
+
+func TestResolveProbeHostEnvWins(t *testing.T) {
+	t.Setenv("HSDEBUG_PROBE_HOST", "10.1.2.3")
+	c := Default()
+	c.ProbeHost = "host.docker.internal"
+	if got := c.ResolveProbeHost(); got != "10.1.2.3" {
+		t.Errorf("env should win, got %q", got)
+	}
+}
+
+func TestProbeHostDefaultApplied(t *testing.T) {
+	withTempConfigDir(t)
+	p, _ := Path()
+	os.WriteFile(p, []byte(`{"version":1}`), 0o644)
+	cfg, _, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ProbeHost != "127.0.0.1" {
+		t.Errorf("probeHost default not applied: %q", cfg.ProbeHost)
+	}
+}
+
 func TestPathHonorsEnvOverride(t *testing.T) {
 	custom := filepath.Join(t.TempDir(), "custom.json")
 	t.Setenv("HSDEBUG_CONFIG", custom)

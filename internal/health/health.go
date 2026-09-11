@@ -23,9 +23,11 @@ type Result struct {
 }
 
 // IsLoopback reports whether host resolves to a loopback address or is the
-// literal localhost name.
+// literal localhost name. The Docker host-gateway alias "host.docker.internal"
+// is also treated as loopback: when hsdebug runs in a bridged container it is
+// the equivalent of the host's 127.0.0.1 for reaching co-located services.
 func IsLoopback(host string) bool {
-	if host == "localhost" {
+	if host == "localhost" || host == "host.docker.internal" {
 		return true
 	}
 	ip := net.ParseIP(host)

@@ -16,6 +16,7 @@ func TestIsLoopback(t *testing.T) {
 		"127.0.0.1": true,
 		"::1":       true,
 		"localhost": true,
+		"host.docker.internal": true,
 		"10.0.0.5":  false,
 		"192.168.1.10": false,
 		"8.8.8.8":   false,

@@ -24,7 +24,12 @@ type Config struct {
 	Agent             AgentConfig     `json:"agent"`
 	Redact            RedactConfig    `json:"redact"`
 	PromptLibraryPath string          `json:"promptLibraryPath"`
-	Services          []ServiceConfig `json:"services"`
+	// ProbeHost is the host used when auto-registering/scanning catalog
+	// services and as the default for `register`. Defaults to 127.0.0.1. Set
+	// to "host.docker.internal" when hsdebug runs in a bridged container.
+	// Overridable at runtime via the HSDEBUG_PROBE_HOST env var.
+	ProbeHost string          `json:"probeHost"`
+	Services  []ServiceConfig `json:"services"`
 }
 
 // ServerConfig controls the local HTTP API + UI service.
@@ -92,6 +97,7 @@ func Default() *Config {
 		},
 		Redact:            RedactConfig{Profile: RedactStrict},
 		PromptLibraryPath: "",
+		ProbeHost:         "127.0.0.1",
 		Services:          []ServiceConfig{},
 	}
 }
@@ -185,9 +191,25 @@ func (c *Config) applyDefaults() {
 	if c.Redact.Profile == "" {
 		c.Redact.Profile = d.Redact.Profile
 	}
+	if c.ProbeHost == "" {
+		c.ProbeHost = d.ProbeHost
+	}
 	if c.Services == nil {
 		c.Services = []ServiceConfig{}
 	}
+}
+
+// ResolveProbeHost returns the host to use for probing/auto-registering
+// services, in priority order: HSDEBUG_PROBE_HOST env var, config ProbeHost,
+// then 127.0.0.1.
+func (c *Config) ResolveProbeHost() string {
+	if h := os.Getenv("HSDEBUG_PROBE_HOST"); h != "" {
+		return h
+	}
+	if c.ProbeHost != "" {
+		return c.ProbeHost
+	}
+	return "127.0.0.1"
 }
 
 // Save writes the config file, creating the directory if needed.

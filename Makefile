@@ -77,6 +77,30 @@ docker-build: ## Build the Docker image (tag with VERSION)
 docker-run: ## Run the Docker image (LAN-accessible on PORT)
 	docker run --rm -p $(PORT):7654 -v $(BINARY)-data:/data $(BINARY):latest
 
+# --- docker compose (server stack) ---------------------------------------
+COMPOSE_DIR ?= $(HOME)/server
+COMPOSE     := docker compose -f $(COMPOSE_DIR)/docker-compose.yaml
+
+.PHONY: compose-build
+compose-build: ## Build the hsdebug image via the server compose file
+	$(COMPOSE) build hsdebug
+
+.PHONY: compose-up
+compose-up: ## Build and (re)start the hsdebug container in the server stack
+	$(COMPOSE) up -d --build hsdebug
+
+.PHONY: compose-restart
+compose-restart: ## Rebuild the image and restart the hsdebug container
+	$(COMPOSE) up -d --build --force-recreate hsdebug
+
+.PHONY: compose-down
+compose-down: ## Stop and remove the hsdebug container
+	$(COMPOSE) rm -sf hsdebug
+
+.PHONY: compose-logs
+compose-logs: ## Follow the hsdebug container logs
+	$(COMPOSE) logs -f hsdebug
+
 .PHONY: clean
 clean: ## Remove build artifacts
 	rm -f $(BINARY) coverage.out

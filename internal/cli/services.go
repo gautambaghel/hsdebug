@@ -32,11 +32,15 @@ func newRegisterCmd() *cobra.Command {
 			if name == "" || port == 0 {
 				return fmt.Errorf("--name and --port are required")
 			}
-			if host == "" {
-				host = "127.0.0.1"
+			cfg, _, err := config.Load()
+			if err != nil {
+				return err
+			}
+			if !cmd.Flags().Changed("host") {
+				host = cfg.ResolveProbeHost()
 			}
 			if !health.IsLoopback(host) {
-				return fmt.Errorf("host %q is not loopback; only localhost/127.0.0.1 services may be registered", host)
+				return fmt.Errorf("host %q is not loopback; only localhost/127.0.0.1/host.docker.internal services may be registered", host)
 			}
 			if scheme == "" {
 				scheme = "http"
@@ -49,10 +53,6 @@ func newRegisterCmd() *cobra.Command {
 					}
 					expect = e.ExpectStatus
 				}
-			}
-			cfg, _, err := config.Load()
-			if err != nil {
-				return err
 			}
 			for _, s := range cfg.Services {
 				if s.Name == name {
@@ -109,10 +109,11 @@ func newScanCmd() *cobra.Command {
 			for _, s := range cfg.Services {
 				existing[s.CatalogID] = true
 			}
+			probeHost := cfg.ResolveProbeHost()
 			result := scanResult{}
 			for _, e := range catalog.Entries {
 				svc := config.ServiceConfig{
-					Name: e.Name, Host: "127.0.0.1", Port: e.Port, Scheme: e.Scheme,
+					Name: e.Name, Host: probeHost, Port: e.Port, Scheme: e.Scheme,
 					HealthPath: e.HealthPath, ExpectStatus: e.ExpectStatus, CatalogID: e.ID,
 				}
 				res := health.Check(svc, 2*time.Second)

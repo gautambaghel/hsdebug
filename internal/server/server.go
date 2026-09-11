@@ -89,7 +89,7 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if body.Host == "" {
-		body.Host = "127.0.0.1"
+		body.Host = s.cfg.ResolveProbeHost()
 	}
 	if !health.IsLoopback(body.Host) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "host must be loopback (127.0.0.1/localhost)"})
@@ -147,9 +147,10 @@ func (s *Server) handleScan(w http.ResponseWriter, r *http.Request) {
 	}
 	var results []detected
 	added := 0
+	probeHost := s.cfg.ResolveProbeHost()
 	for _, e := range catalog.Entries {
 		svc := config.ServiceConfig{
-			Name: e.Name, Host: "127.0.0.1", Port: e.Port, Scheme: e.Scheme,
+			Name: e.Name, Host: probeHost, Port: e.Port, Scheme: e.Scheme,
 			HealthPath: e.HealthPath, ExpectStatus: e.ExpectStatus, CatalogID: e.ID,
 		}
 		res := health.Check(svc, 2*time.Second)

@@ -1,7 +1,7 @@
 # hsdebug — multi-stage build producing a small static binary plus opencode.
 
 # --- build stage ---
-FROM golang:1.23-bookworm AS build
+FROM golang:1.24-bookworm AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
