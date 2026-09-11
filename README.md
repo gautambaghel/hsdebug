@@ -1,7 +1,7 @@
 # hsdebug — home server debugger agent
 
 `hsdebug` is a single Go binary that both **runs a local service** (`hsdebug server`)
-and acts as its **client** (all other subcommands), following the Vault pattern.
+and acts as its **client** (all other subcommands).
 It registers locally running home-server services, checks their health, and uses
 the [opencode](https://opencode.ai) agent to debug the unhealthy ones.
 
