@@ -18,19 +18,31 @@ func newDebugCmd() *cobra.Command {
 		quiet   bool
 		verbose bool
 		auto    bool
+		all     bool
+		god     bool
 		attach  string
 	)
 	cmd := &cobra.Command{
-		Use:   "debug [service]",
+		Use:   "debug [service...]",
 		Short: "Debug unhealthy services with the opencode agent",
 		Long: "Runs a preflight gate (agent configured, opencode present, AI dry-run), " +
-			"then collects unhealthy services and runs the agent to diagnose them.",
+			"then collects unhealthy services and runs the agent to diagnose them. " +
+			"Pass one or more service names, or --all to debug every unhealthy service.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mgr, cfg, err := loadManager()
 			if err != nil {
 				return err
 			}
 			out := cmd.OutOrStdout()
+
+			// God mode elevates opencode permissions for this run and implies
+			// auto-approval.
+			if god {
+				if err := mgr.SetGodMode(true); err != nil {
+					return fmt.Errorf("enabling god mode: %w", err)
+				}
+				auto = true
+			}
 
 			// --- Preflight gate ---
 			pf := debug.RunPreflight(cmd.Context(), mgr, cfg)
@@ -52,11 +64,14 @@ func newDebugCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if len(args) == 1 {
+			if len(args) > 0 && !all {
 				var filtered []debug.Task
 				for _, t := range tasks {
-					if strings.EqualFold(t.Service.Name, args[0]) || strings.EqualFold(t.Service.CatalogID, args[0]) {
-						filtered = append(filtered, t)
+					for _, name := range args {
+						if strings.EqualFold(t.Service.Name, name) || strings.EqualFold(t.Service.CatalogID, name) {
+							filtered = append(filtered, t)
+							break
+						}
 					}
 				}
 				tasks = filtered
@@ -106,6 +121,8 @@ func newDebugCmd() *cobra.Command {
 	f.BoolVar(&quiet, "quiet", false, "only show cause and resolution")
 	f.BoolVarP(&verbose, "verbose", "v", false, "show full JSON agent events")
 	f.BoolVar(&auto, "auto", false, "auto-approve agent permissions not explicitly denied")
+	f.BoolVar(&all, "all", false, "debug all unhealthy services")
+	f.BoolVar(&god, "god", false, "god mode: run opencode with elevated (allow-all) permissions")
 	f.StringVar(&attach, "attach", "", "attach to a running opencode server URL")
 	return cmd
 }
