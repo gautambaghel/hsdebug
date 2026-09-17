@@ -14,7 +14,7 @@ the [opencode](https://opencode.ai) agent to debug the unhealthy ones.
 | `hsdebug scan` | Auto-detect common home-server services on loopback (`--add` to register). |
 | `hsdebug health [service]` | Check health of one or all services (green tick / red cross). |
 | `hsdebug agent ...` | Configure the opencode agent (model, provider, credentials, probe). |
-| `hsdebug debug [service]` | Debug unhealthy services (preflight gate + agent run). |
+| `hsdebug debug [service...]` | Debug one, several, or `--all` unhealthy services (preflight gate + agent run; `--god` for elevated permissions). |
 | `hsdebug doctor` | Self-diagnostics for hsdebug itself. |
 
 ### Global output flags (all commands)
