@@ -160,6 +160,29 @@ func (m *Manager) SetProviderKey(provider, key, keyEnv, keyFile string) error {
 	return m.WriteOpencodeConfig()
 }
 
+// permissionPolicy returns the opencode permission block. In god mode every
+// tool is allowed; otherwise potentially destructive tools require an explicit
+// ask (surfaced to the operator via the UI or --auto).
+func permissionPolicy(godMode bool) map[string]any {
+	if godMode {
+		return map[string]any{"edit": "allow", "bash": "allow", "webfetch": "allow"}
+	}
+	return map[string]any{"edit": "ask", "bash": "ask", "webfetch": "allow"}
+}
+
+// SetGodMode toggles elevated permissions and regenerates the isolated opencode
+// config so the change takes effect on the next run.
+func (m *Manager) SetGodMode(enabled bool) error {
+	m.cfg.Agent.GodMode = enabled
+	if err := m.cfg.Save(); err != nil {
+		return err
+	}
+	return m.WriteOpencodeConfig()
+}
+
+// GodMode reports whether elevated permissions are enabled.
+func (m *Manager) GodMode() bool { return m.cfg.Agent.GodMode }
+
 // apiKeyField maps a provider id to the option key opencode expects. Most
 // providers use "apiKey".
 func apiKeyField(provider string) string { return "apiKey" }
@@ -195,6 +218,7 @@ func (m *Manager) WriteOpencodeConfig() error {
 			m.cfg.Agent.Provider: {Options: map[string]any{apiKeyField(m.cfg.Agent.Provider): sub}},
 		}
 	}
+	oc.Permission = permissionPolicy(m.cfg.Agent.GodMode)
 	if err := os.MkdirAll(filepath.Dir(ocp), 0o755); err != nil {
 		return err
 	}

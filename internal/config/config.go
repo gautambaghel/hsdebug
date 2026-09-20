@@ -47,7 +47,11 @@ type AgentConfig struct {
 	// opencode config via {file:}. Empty means credentials come from env.
 	CredentialRef string     `json:"credentialRef"`
 	OpencodePort  int        `json:"opencodePort"` // managed `opencode serve` port
-	Probe         ProbeConfig `json:"probe"`
+	// GodMode elevates opencode permissions (allow-all) for debug runs. It is
+	// written into the isolated opencode config's permission block and implies
+	// auto-approval. Off by default.
+	GodMode bool        `json:"godMode"`
+	Probe   ProbeConfig `json:"probe"`
 }
 
 // ProbeConfig makes the AI dry-run (liveness) behaviour configurable.

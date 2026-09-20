@@ -22,6 +22,7 @@ func newAgentCmd() *cobra.Command {
 		newAgentModelCmd(),
 		newAgentProviderCmd(),
 		newAgentProbeCmd(),
+		newAgentGodModeCmd(),
 	)
 	return cmd
 }
@@ -184,6 +185,47 @@ func newAgentProbeCmd() *cobra.Command {
 
 type simpleMsg struct {
 	Message string `json:"message"`
+}
+
+func newAgentGodModeCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "godmode [on|off]",
+		Short: "Enable or disable elevated (allow-all) opencode permissions",
+		Long: "God mode writes an allow-all permission policy into the isolated " +
+			"opencode config so debug runs can act without per-action approval. " +
+			"With no argument, prints the current state.",
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			mgr, _, err := loadManager()
+			if err != nil {
+				return err
+			}
+			if len(args) == 0 {
+				state := "off"
+				if mgr.GodMode() {
+					state = "on"
+				}
+				return globalOpts.Render(cmd.OutOrStdout(), simpleMsg{"god mode is " + state})
+			}
+			var enabled bool
+			switch strings.ToLower(args[0]) {
+			case "on", "true", "enable", "enabled":
+				enabled = true
+			case "off", "false", "disable", "disabled":
+				enabled = false
+			default:
+				return fmt.Errorf("expected 'on' or 'off', got %q", args[0])
+			}
+			if err := mgr.SetGodMode(enabled); err != nil {
+				return err
+			}
+			state := "off"
+			if enabled {
+				state = "on"
+			}
+			return globalOpts.Render(cmd.OutOrStdout(), simpleMsg{"god mode " + state})
+		},
+	}
 }
 
 func (s simpleMsg) Text() string     { return s.Message }
