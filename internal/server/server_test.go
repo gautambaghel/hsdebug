@@ -117,7 +117,7 @@ func TestStartDebugPreflightGate(t *testing.T) {
 	cfg.Agent.Model = "" // unconfigured
 	mgr, _ := agent.NewManager(cfg, &fakeRunner{installed: true})
 	s := New(cfg, mgr)
-	sess := s.StartDebug(context.Background(), "sess1", nil, false)
+	sess := s.StartDebug(context.Background(), s.newSession("sess1", nil), nil, false)
 	if sess.Status != "failed" {
 		t.Errorf("expected failed session, got %q", sess.Status)
 	}
@@ -195,7 +195,7 @@ func TestScanEndpointReturnsResults(t *testing.T) {
 
 func TestSessionsEndpoint(t *testing.T) {
 	s := newTestServer(t, &fakeRunner{installed: true, output: []byte(`{"text":"HSDEBUG_OK"}`)})
-	s.StartDebug(context.Background(), "s1", nil, false) // will fail collect (no services) but records session
+	s.StartDebug(context.Background(), s.newSession("s1", nil), nil, false) // will fail collect (no services) but records session
 	req := httptest.NewRequest("GET", "/api/sessions", nil)
 	rec := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, req)
@@ -212,11 +212,18 @@ func TestDebugEndpointGate(t *testing.T) {
 	cfg.Agent.Model = "" // unconfigured -> gate should block
 	mgr, _ := agent.NewManager(cfg, &fakeRunner{installed: true})
 	s := New(cfg, mgr)
+	// The endpoint is async: it accepts (202) and reports the gate outcome via
+	// the session status / SSE stream.
 	req := httptest.NewRequest("POST", "/api/debug", nil)
 	rec := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, req)
-	if rec.Code != http.StatusServiceUnavailable {
-		t.Errorf("expected 503 from gate, got %d: %s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusAccepted {
+		t.Errorf("expected 202 accepted, got %d: %s", rec.Code, rec.Body.String())
+	}
+	// The gate itself must block: a directly-run session fails.
+	sess := s.StartDebug(context.Background(), s.newSession("gate", nil), nil, false)
+	if sess.Status != "failed" {
+		t.Errorf("expected gate to block session, got status %q", sess.Status)
 	}
 }
 
@@ -227,4 +234,54 @@ func contains2(s, sub string) bool {
 		}
 	}
 	return false
+}
+
+func TestDetectPermission(t *testing.T) {
+	if detectPermission(`{"type":"text","text":"hi"}`) != "" {
+		t.Error("non-permission line should return empty")
+	}
+	if detectPermission("not json") != "" {
+		t.Error("invalid json should return empty")
+	}
+	out := detectPermission(`{"type":"permission","permissionID":"p1","sessionID":"s1","title":"run bash"}`)
+	if out == "" {
+		t.Fatal("permission line should be detected")
+	}
+	var m map[string]any
+	if err := json.Unmarshal([]byte(out), &m); err != nil {
+		t.Fatal(err)
+	}
+	if m["title"] != "run bash" || m["requestId"] != "p1" {
+		t.Errorf("unexpected permission payload: %s", out)
+	}
+}
+
+func TestGodModeEndpoint(t *testing.T) {
+	s := newTestServer(t, &fakeRunner{installed: true})
+	// enable
+	req := httptest.NewRequest("POST", "/api/agent/godmode", strings.NewReader(`{"enabled":true}`))
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || !contains2(rec.Body.String(), `"godMode":true`) {
+		t.Fatalf("enable god mode failed: %d %s", rec.Code, rec.Body.String())
+	}
+	// agent endpoint reflects it
+	req = httptest.NewRequest("GET", "/api/agent", nil)
+	rec = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, req)
+	if !contains2(rec.Body.String(), `"godMode":true`) {
+		t.Errorf("agent endpoint missing godMode:true: %s", rec.Body.String())
+	}
+}
+
+func TestPermissionEndpointNoServer(t *testing.T) {
+	s := newTestServer(t, &fakeRunner{installed: true})
+	body := strings.NewReader(`{"id":"sess","requestId":"s1/p1","decision":"allow"}`)
+	req := httptest.NewRequest("POST", "/api/debug/permission", body)
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, req)
+	// No managed opencode server configured -> 503.
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Errorf("expected 503 without opencode server, got %d: %s", rec.Code, rec.Body.String())
+	}
 }
